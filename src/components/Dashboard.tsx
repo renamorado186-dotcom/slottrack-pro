@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../store';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, CartesianGrid } from 'recharts';
-import { Coins, CircleDollarSign, TrendingUp, Users, ArrowUpRight, ArrowDownRight, Minus, Sparkles, AlertTriangle, Lightbulb, RefreshCw, Layers, CalendarDays } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend } from 'recharts';
+import { Coins, CircleDollarSign, TrendingUp, Users, ArrowUpRight, ArrowDownRight, Minus, Sparkles, AlertTriangle, Lightbulb, RefreshCw, Layers, CalendarDays, Trash2, PlusCircle, FileText, Calendar } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface AiInsightData {
@@ -13,7 +13,7 @@ interface AiInsightData {
 }
 
 export function Dashboard() {
-  const { data } = useStore();
+  const { data, addExpense, deleteExpense } = useStore();
 
   const [aiData, setAiData] = useState<AiInsightData | null>(() => {
     const saved = localStorage.getItem('slot_track_ai_forecast');
@@ -28,6 +28,14 @@ export function Dashboard() {
   });
   const [isLoadingAi, setIsLoadingAi] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+
+  // Expense Form States
+  const [expenseAmount, setExpenseAmount] = useState('');
+  const [expenseNotes, setExpenseNotes] = useState('');
+  const [expenseCategory, setExpenseCategory] = useState('Repuesto');
+  const [expenseLocationId, setExpenseLocationId] = useState('');
+  const [expenseDate, setExpenseDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [expenseError, setExpenseError] = useState('');
 
   const fetchAiAnalysis = async () => {
     setIsLoadingAi(true);
@@ -63,38 +71,95 @@ export function Dashboard() {
   const totalOwner = data.records.reduce((acc, r) => acc + r.ownerShare, 0);
   const totalManager = data.records.reduce((acc, r) => acc + r.managerShare, 0);
   const totalRecords = data.records.length;
+  const totalExpenses = (data.expenses || []).reduce((acc, e) => acc + e.amount, 0);
 
-  // Daily Revenue Evolution Data
-  const dailyRevenueData = React.useMemo(() => {
-    const dailyMap: { [date: string]: number } = {};
-    
-    data.records.forEach(r => {
-      const dateKey = r.dateStr || new Date(r.timestamp).toISOString().split('T')[0];
-      dailyMap[dateKey] = (dailyMap[dateKey] || 0) + r.total;
+  const handleAddExpenseSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setExpenseError('');
+
+    const amountNum = parseFloat(expenseAmount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      setExpenseError('Por favor introduce un monto de egreso válido (mayor a 0).');
+      return;
+    }
+    if (!expenseNotes.trim()) {
+      setExpenseError('Por favor detalla el concepto o nota del egreso.');
+      return;
+    }
+
+    const selectedLoc = data.locations.find(l => l.id === expenseLocationId);
+
+    addExpense({
+      id: `exp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      timestamp: new Date(expenseDate + "T12:00:00").getTime() || Date.now(),
+      dateStr: expenseDate,
+      amount: amountNum,
+      notes: expenseNotes.trim(),
+      category: expenseCategory,
+      locationId: expenseLocationId || undefined,
+      locationName: selectedLoc ? selectedLoc.name : undefined
     });
 
-    return Object.entries(dailyMap)
-      .map(([date, total]) => {
-        let formattedDate = date;
+    // Reset fields
+    setExpenseAmount('');
+    setExpenseNotes('');
+    setExpenseCategory('Repuesto');
+    setExpenseLocationId('');
+    setExpenseDate(new Date().toISOString().split('T')[0]);
+  };
+
+  // Monthly Revenue and Expense Data
+  const monthlyRevenueData = React.useMemo(() => {
+    const monthlyMap: { [month: string]: { month: string; income: number; expense: number } } = {};
+
+    data.records.forEach(r => {
+      const dateStr = r.dateStr || new Date(r.timestamp).toISOString().split('T')[0];
+      const monthKey = dateStr.substring(0, 7); // YYYY-MM
+      if (!monthlyMap[monthKey]) {
+        monthlyMap[monthKey] = { month: monthKey, income: 0, expense: 0 };
+      }
+      monthlyMap[monthKey].income += r.total;
+    });
+
+    const expenseList = data.expenses || [];
+    expenseList.forEach(e => {
+      const dateStr = e.dateStr || new Date(e.timestamp).toISOString().split('T')[0];
+      const monthKey = dateStr.substring(0, 7); // YYYY-MM
+      if (!monthlyMap[monthKey]) {
+        monthlyMap[monthKey] = { month: monthKey, income: 0, expense: 0 };
+      }
+      monthlyMap[monthKey].expense += e.amount;
+    });
+
+    const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
+    return Object.values(monthlyMap)
+      .map(item => {
+        let formattedMonth = item.month;
         try {
-          const parts = date.split('-');
-          if (parts.length === 3) {
-            formattedDate = `${parts[2]}/${parts[1]}`; // DD/MM format
+          const parts = item.month.split('-');
+          if (parts.length === 2) {
+            const year = parts[0];
+            const monthIdx = parseInt(parts[1], 10) - 1;
+            if (monthIdx >= 0 && monthIdx < 12) {
+              formattedMonth = `${monthNames[monthIdx]} ${year}`;
+            }
           }
-        } catch (e) {}
-        return { 
-          rawDate: date, 
-          formattedDate, 
-          total 
+        } catch (err) {}
+
+        return {
+          ...item,
+          formattedMonth,
+          net: item.income - item.expense
         };
       })
-      .sort((a, b) => a.rawDate.localeCompare(b.rawDate));
-  }, [data.records]);
+      .sort((a, b) => a.month.localeCompare(b.month));
+  }, [data.records, data.expenses]);
 
-  const highestActivityDay = React.useMemo(() => {
-    if (dailyRevenueData.length === 0) return null;
-    return [...dailyRevenueData].sort((a, b) => b.total - a.total)[0];
-  }, [dailyRevenueData]);
+  const highestPerformanceMonth = React.useMemo(() => {
+    if (monthlyRevenueData.length === 0) return null;
+    return [...monthlyRevenueData].sort((a, b) => b.income - a.income)[0];
+  }, [monthlyRevenueData]);
 
   // Revenue by Location Data
   const locationTrends = data.locations.map(loc => {
@@ -471,59 +536,231 @@ export function Dashboard() {
 
       </div>
 
-      {/* Evolución de Ingresos Diarios */}
-      <motion.div 
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.25, duration: 0.4 }}
-        whileHover={{ y: -4 }}
-        className="bg-slate-900/40 backdrop-blur-md p-6 rounded-3xl shadow-xl border border-white/5 transition-all hover:border-white/10 hover:shadow-emerald-500/5 duration-300"
-      >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div>
-            <h3 className="text-white font-bold flex items-center gap-2 tracking-tight text-sm uppercase text-slate-300">
-              <TrendingUp size={18} className="text-emerald-400" />
-              Evolución de Ingresos Diarios
-            </h3>
-            <p className="text-xs text-slate-400 mt-1">Historial cronológico de recaudaciones totales por día</p>
+      {/* Evolución Financiera Mensual (Ingresos vs Egresos) + Gestión de Egresos */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* Gráfico Mensual */}
+        <motion.div 
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25, duration: 0.4 }}
+          whileHover={{ y: -4 }}
+          className="bg-slate-900/40 backdrop-blur-md p-6 rounded-3xl shadow-xl border border-white/5 lg:col-span-2 transition-all hover:border-white/10 hover:shadow-indigo-500/5 duration-300"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div>
+              <h3 className="text-white font-bold flex items-center gap-2 tracking-tight text-sm uppercase text-slate-300">
+                <TrendingUp size={18} className="text-emerald-400" />
+                Evolución Financiera Mensual
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">Comparativa de ingresos recaudados contra egresos operativos por mes</p>
+            </div>
+            {highestPerformanceMonth && (
+              <div className="px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/15 text-emerald-400 rounded-xl text-xs flex items-center gap-2 self-start sm:self-center">
+                <CalendarDays size={14} className="text-emerald-400" />
+                <span>Mes más fuerte: <strong className="font-semibold">{highestPerformanceMonth.formattedMonth}</strong> con <strong className="font-bold">L {highestPerformanceMonth.income.toLocaleString()}</strong></span>
+              </div>
+            )}
           </div>
-          {highestActivityDay && (
-            <div className="px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/15 text-emerald-400 rounded-xl text-xs flex items-center gap-2 self-start sm:self-center">
-              <CalendarDays size={14} className="text-emerald-400" />
-              <span>Día con mayor actividad: <strong className="font-semibold">{highestActivityDay.formattedDate}</strong> con <strong className="font-bold">L {highestActivityDay.total.toLocaleString()}</strong></span>
-            </div>
-          )}
-        </div>
 
-        <div className="h-80 w-full">
-          {dailyRevenueData.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={dailyRevenueData} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                <XAxis dataKey="formattedDate" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
-                <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(value) => `L ${value}`} />
-                <Tooltip 
-                  cursor={{ stroke: 'rgba(255,255,255,0.08)', strokeWidth: 1.5 }}
-                  formatter={(value) => [`L ${value}`, 'Ingresos']}
-                  contentStyle={{ backgroundColor: '#0f172a', borderColor: 'rgba(255,255,255,0.1)', color: '#f8fafc', borderRadius: '12px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)' }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="total" 
-                  stroke="#10b981" 
-                  strokeWidth={3} 
-                  activeDot={{ r: 6, stroke: '#10b981', strokeWidth: 2, fill: '#ffffff' }} 
-                  dot={{ stroke: '#10b981', strokeWidth: 2, r: 4, fill: '#0f172a' }} 
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="flex bg-white/5 items-center justify-center h-full rounded-xl text-slate-500 text-sm border border-white/5 italic">
-              Inserta registros en el conteo para ver la evolución de ingresos diarios
+          <div className="h-80 w-full">
+            {monthlyRevenueData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={monthlyRevenueData} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                  <XAxis dataKey="formattedMonth" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(value) => `L ${value}`} />
+                  <Tooltip 
+                    cursor={{ stroke: 'rgba(255,255,255,0.08)', strokeWidth: 1.5 }}
+                    formatter={(value, name) => {
+                      const formattedValue = `L ${Number(value).toLocaleString()}`;
+                      if (name === 'income') return [formattedValue, 'Ingresos Totales'];
+                      if (name === 'expense') return [formattedValue, 'Egresos Totales'];
+                      if (name === 'net') return [formattedValue, 'Balance Neto'];
+                      return [formattedValue, name];
+                    }}
+                    contentStyle={{ backgroundColor: '#0f172a', borderColor: 'rgba(255,255,255,0.1)', color: '#f8fafc', borderRadius: '12px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)' }}
+                  />
+                  <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: 11, color: '#94a3b8' }} />
+                  <Line 
+                    type="monotone" 
+                    name="income"
+                    dataKey="income" 
+                    stroke="#10b981" 
+                    strokeWidth={3} 
+                    activeDot={{ r: 6, stroke: '#10b981', strokeWidth: 2, fill: '#ffffff' }} 
+                    dot={{ stroke: '#10b981', strokeWidth: 2, r: 4, fill: '#0f172a' }} 
+                  />
+                  <Line 
+                    type="monotone" 
+                    name="expense"
+                    dataKey="expense" 
+                    stroke="#f43f5e" 
+                    strokeWidth={3} 
+                    activeDot={{ r: 6, stroke: '#f43f5e', strokeWidth: 2, fill: '#ffffff' }} 
+                    dot={{ stroke: '#f43f5e', strokeWidth: 2, r: 4, fill: '#0f172a' }} 
+                  />
+                  <Line 
+                    type="monotone" 
+                    name="net"
+                    dataKey="net" 
+                    stroke="#3b82f6" 
+                    strokeWidth={2} 
+                    strokeDasharray="4 4"
+                    activeDot={{ r: 4, stroke: '#3b82f6', strokeWidth: 1 }} 
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex bg-white/5 items-center justify-center h-full rounded-xl text-slate-500 text-sm border border-white/5 italic">
+                Inserta registros o egresos para ver la evolución financiera mensual
+              </div>
+            )}
+          </div>
+        </motion.div>
+
+        {/* Panel de Gestión de Egresos */}
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.4 }}
+          whileHover={{ y: -4 }}
+          className="bg-slate-900/40 backdrop-blur-md p-6 rounded-3xl shadow-xl border border-white/5 flex flex-col justify-between transition-all hover:border-white/10 hover:shadow-rose-500/5 duration-300"
+        >
+          <div className="space-y-4">
+            <div className="border-b border-white/5 pb-3">
+              <h3 className="text-white font-bold flex items-center gap-2 tracking-tight text-sm uppercase text-slate-300">
+                <Coins size={18} className="text-rose-400" />
+                Registrar Egreso (Gasto)
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">Registra gastos operativos de repuestos, talleres o transporte</p>
             </div>
-          )}
-        </div>
-      </motion.div>
+
+            <form onSubmit={handleAddExpenseSubmit} className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Monto (L)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    placeholder="Monto"
+                    value={expenseAmount}
+                    onChange={e => setExpenseAmount(e.target.value)}
+                    className="w-full bg-slate-950/60 border border-white/5 p-2 px-3 rounded-xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-rose-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Fecha</label>
+                  <input
+                    type="date"
+                    required
+                    value={expenseDate}
+                    onChange={e => setExpenseDate(e.target.value)}
+                    className="w-full bg-slate-950/60 border border-white/5 p-2 px-3 rounded-xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-rose-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Categoría</label>
+                  <select
+                    value={expenseCategory}
+                    onChange={e => setExpenseCategory(e.target.value)}
+                    className="w-full bg-slate-950/60 border border-white/5 p-2 px-3 rounded-xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-rose-500"
+                  >
+                    <option value="Repuesto">🔧 Repuesto</option>
+                    <option value="Mantenimiento">⚙️ Mantenimiento</option>
+                    <option value="Transporte">🚗 Transporte</option>
+                    <option value="Comisión">💰 Comisión</option>
+                    <option value="Impuestos">🏛️ Impuestos</option>
+                    <option value="Otros">📦 Otros</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Puesto (Opcional)</label>
+                  <select
+                    value={expenseLocationId}
+                    onChange={e => setExpenseLocationId(e.target.value)}
+                    className="w-full bg-slate-950/60 border border-white/5 p-2 px-3 rounded-xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-rose-500"
+                  >
+                    <option value="">Ninguno</option>
+                    {data.locations.map(loc => (
+                      <option key={loc.id} value={loc.id}>{loc.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Concepto / Notas</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ej. Compra de resorte cónico de pinball"
+                  value={expenseNotes}
+                  onChange={e => setExpenseNotes(e.target.value)}
+                  className="w-full bg-slate-950/60 border border-white/5 p-2 px-3 rounded-xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-rose-500"
+                />
+              </div>
+
+              {expenseError && (
+                <p className="text-[10px] text-rose-400 font-semibold">{expenseError}</p>
+              )}
+
+              <button
+                type="submit"
+                className="w-full flex items-center justify-center gap-1.5 p-2.5 bg-rose-600 hover:bg-rose-700 active:scale-[0.98] text-white text-xs font-bold rounded-xl transition-all shadow-md cursor-pointer"
+              >
+                <PlusCircle size={14} />
+                Agregar Egreso
+              </button>
+            </form>
+          </div>
+
+          {/* List of recent expenses */}
+          <div className="mt-5 border-t border-white/5 pt-4 flex-1 flex flex-col justify-between">
+            <h4 className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2">Últimos Egresos Registrados</h4>
+            <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-1">
+              {(data.expenses || []).length > 0 ? (
+                (data.expenses || []).slice(0, 4).map(exp => (
+                  <div key={exp.id} className="flex items-center justify-between p-2 rounded-xl bg-white/5 border border-white/5 hover:bg-white-[0.08] text-[11px] group select-none">
+                    <div className="space-y-0.5 max-w-[70%]">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-extrabold text-rose-400 font-mono">L {exp.amount.toLocaleString()}</span>
+                        <span className="text-[9px] text-slate-500 font-bold bg-white/5 px-1 py-0.5 rounded">{exp.category}</span>
+                      </div>
+                      <p className="text-slate-300 font-light truncate">{exp.notes}</p>
+                      {exp.locationName && (
+                        <p className="text-[9px] text-slate-500 font-medium truncate">📍 {exp.locationName}</p>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => deleteExpense(exp.id)}
+                      className="text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 p-1.5 rounded-lg transition-colors cursor-pointer"
+                      title="Eliminar Egreso"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-slate-500 italic py-4 text-center">No hay egresos registrados</p>
+              )}
+            </div>
+            
+            {(data.expenses || []).length > 0 && (
+              <div className="flex justify-between items-center text-[10px] text-slate-400 border-t border-white/5 pt-2 mt-2 font-bold uppercase">
+                <span>Total Egresos:</span>
+                <span className="font-mono text-rose-400">L {totalExpenses.toLocaleString()}</span>
+              </div>
+            )}
+          </div>
+        </motion.div>
+
+      </div>
 
     </div>
   );

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { AppData, Location, Machine, RecordEntry, Settings } from './types';
+import { AppData, Location, Machine, RecordEntry, Settings, Expense } from './types';
 
 const STORAGE_KEY = 'slot_track_pro_data';
 
@@ -7,6 +7,7 @@ const DEFAULT_DATA: AppData = {
   locations: [],
   machines: [],
   records: [],
+  expenses: [],
   settings: {
     theme: 'light'
   }
@@ -26,6 +27,8 @@ interface StoreContextType {
   deleteMachine: (id: string) => void;
   updateSettings: (settings: Partial<Settings>) => void;
   importData: (importedData: AppData) => void;
+  addExpense: (expense: Expense) => void;
+  deleteExpense: (id: string) => void;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -35,7 +38,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        return {
+          ...DEFAULT_DATA,
+          ...parsed,
+          expenses: parsed.expenses || []
+        };
       } catch (e) {
         console.error("Failed to parse local storage", e);
       }
@@ -63,7 +71,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   };
 
   const clearRecords = () => {
-    setData(prev => ({ ...prev, records: [] }));
+    setData(prev => ({ ...prev, records: [], expenses: [] }));
   };
 
   const addLocation = (location: Location) => {
@@ -74,8 +82,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setData(prev => ({
       ...prev,
       locations: prev.locations.map(l => l.id === id ? { ...l, name } : l),
-      // Update denormalized names in historical records? Usually history relies on snapshot at the time, 
-      // but here the user might want current names in views. Let's keep strict snapshot for integrity.
     }));
   };
 
@@ -107,7 +113,25 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   };
 
   const importData = (importedData: AppData) => {
-    setData(importedData);
+    setData({
+      ...DEFAULT_DATA,
+      ...importedData,
+      expenses: importedData.expenses || []
+    });
+  };
+
+  const addExpense = (expense: Expense) => {
+    setData(prev => ({
+      ...prev,
+      expenses: [expense, ...(prev.expenses || [])]
+    }));
+  };
+
+  const deleteExpense = (id: string) => {
+    setData(prev => ({
+      ...prev,
+      expenses: (prev.expenses || []).filter(e => e.id !== id)
+    }));
   };
 
   return (
@@ -124,7 +148,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       updateMachine,
       deleteMachine,
       updateSettings,
-      importData
+      importData,
+      addExpense,
+      deleteExpense
     }}>
       {children}
     </StoreContext.Provider>
