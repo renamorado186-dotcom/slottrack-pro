@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useStore } from '../store';
 import { Settings, Download, Upload, Shield, Save, FileText } from 'lucide-react';
-import { exportToCSV, exportBackup, generateMonthlyPDFReport } from '../utils';
+import { exportToCSV, exportBackup, generateMonthlyPDFReport, generateFullBackupPDFReport } from '../utils';
 import { format } from 'date-fns';
 
 export function SettingsView() {
@@ -121,20 +121,34 @@ export function SettingsView() {
               </div>
             </div>
 
-            <div className="pt-4 border-t border-white/10">
-              <p className="text-sm font-medium text-slate-300 mb-2">Copias de Seguridad (JSON Completo)</p>
-              <div className="flex flex-col gap-3">
+            <div className="pt-4 border-t border-white/10 space-y-4">
+              <div>
+                <p className="text-sm font-medium text-slate-300 mb-1">Copia de Seguridad y Reporte Visual</p>
+                <p className="text-xs text-slate-500 mb-2">Descarga un documento PDF completo con estadísticas, gráficos e inventario financiero.</p>
                 <button 
-                  onClick={() => exportBackup(data)}
-                  className="flex items-center justify-center gap-2 bg-transparent hover:bg-white/5 text-slate-300 border border-white/10 px-4 py-3 rounded-xl text-sm font-semibold transition-colors"
+                  onClick={() => generateFullBackupPDFReport(data)}
+                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 border border-transparent shadow-md px-4 py-3 rounded-xl text-sm font-bold text-white transition-all transform active:scale-95 cursor-pointer"
                 >
-                  <Download size={18} /> Descargar Respaldo Total
+                  <FileText size={18} /> Descargar Respaldo Total (PDF con Gráficos)
                 </button>
-                
-                <label className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white border border-transparent shadow-lg shadow-blue-500/20 cursor-pointer px-4 py-3 rounded-xl text-sm font-semibold transition-colors">
-                  <Upload size={18} /> Restaurar desde Archivo
-                  <input type="file" accept=".json" className="hidden" onChange={handleImport} />
-                </label>
+              </div>
+
+              <div className="border-t border-white/5 pt-3">
+                <p className="text-sm font-medium text-slate-300 mb-1">Sincronización Técnica (JSON)</p>
+                <p className="text-xs text-slate-500 mb-2">Útil para exportar el archivo técnico de datos y cargarlo en otro dispositivo celular.</p>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <button 
+                    onClick={() => exportBackup(data)}
+                    className="flex-1 flex items-center justify-center gap-2 bg-transparent hover:bg-white/5 text-slate-300 border border-white/10 px-4 py-2.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                  >
+                    <Download size={14} /> Descargar Respaldo JSON
+                  </button>
+                  
+                  <label className="flex-1 flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 text-white cursor-pointer px-4 py-2.5 rounded-xl text-xs font-semibold transition-colors">
+                    <Upload size={14} /> Cargar Respaldo (.json)
+                    <input type="file" accept=".json" className="hidden" onChange={handleImport} />
+                  </label>
+                </div>
               </div>
             </div>
 
