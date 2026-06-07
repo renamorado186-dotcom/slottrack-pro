@@ -6,7 +6,8 @@ import { NewRecord } from './components/NewRecord';
 import { History } from './components/History';
 import { Locations } from './components/Locations';
 import { SettingsView } from './components/Settings';
-import { LayoutDashboard, PlusCircle, History as HistoryIcon, MapPin, Settings as SettingsIcon } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, History as HistoryIcon, MapPin, Settings as SettingsIcon, Sparkles } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 function AppContent() {
   const { data } = useStore();
@@ -20,66 +21,164 @@ function AppContent() {
   }
 
   const tabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
-    { id: 'new', label: 'Nuevo Conteo', icon: <PlusCircle size={20} /> },
-    { id: 'history', label: 'Historial', icon: <HistoryIcon size={20} /> },
-    { id: 'locations', label: 'Puestos', icon: <MapPin size={20} /> },
-    { id: 'settings', label: 'Ajustes', icon: <SettingsIcon size={20} /> },
+    { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
+    { id: 'new', label: 'Nuevo Conteo', icon: <PlusCircle size={18} /> },
+    { id: 'history', label: 'Historial', icon: <HistoryIcon size={18} /> },
+    { id: 'locations', label: 'Puestos', icon: <MapPin size={18} /> },
+    { id: 'settings', label: 'Ajustes', icon: <SettingsIcon size={18} /> },
   ];
 
   return (
-    <div className="min-h-screen bg-slate-900 flex flex-col md:flex-row font-sans print:bg-white text-slate-50">
+    <div className="min-h-screen bg-slate-950 flex flex-col md:flex-row font-sans print:bg-white text-slate-100 relative overflow-x-hidden">
       
+      {/* PERSISTENT 3D VIVID BACKGROUND LAYER */}
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden select-none">
+        {/* Fullscreen high contrast 3D slot gaming environment image */}
+        <motion.img 
+          src="/src/assets/images/slots_hero_1780857874331.png" 
+          alt="3D Theme Background" 
+          referrerPolicy="no-referrer"
+          initial={{ scale: 1.15, opacity: 0 }}
+          animate={{ 
+            scale: [1.12, 1.15, 1.12],
+            opacity: 0.18,
+          }}
+          transition={{ 
+            scale: { duration: 25, repeat: Infinity, ease: "easeInOut" },
+            opacity: { duration: 1.5 }
+          }}
+          className="w-full h-full object-cover object-center filter saturate-150 contrast-125 brightness-75 scale-110"
+        />
+        {/* Liquid neon light orbs breathing behind components to make it feel extremely alive */}
+        <motion.div 
+          animate={{ 
+            x: [0, 45, -20, 0], 
+            y: [0, -35, 50, 0],
+            scale: [1, 1.25, 0.9, 1] 
+          }}
+          transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute top-1/4 left-1/4 w-[35rem] h-[35rem] bg-indigo-500/8 rounded-full blur-[130px]"
+        />
+        <motion.div 
+          animate={{ 
+            x: [0, -50, 30, 0], 
+            y: [0, 40, -45, 0],
+            scale: [1, 0.9, 1.2, 1] 
+          }}
+          transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute bottom-1/4 right-1/4 w-[40rem] h-[40rem] bg-cyan-500/8 rounded-full blur-[140px]"
+        />
+        <motion.div 
+          animate={{ 
+            opacity: [0.3, 0.6, 0.3]
+          }}
+          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute inset-0 bg-radial-[circle_at_center,transparent_40%,#020617_90%] mix-blend-multiply"
+        />
+        {/* Sleek digital grids overlaid */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-[size:3rem_3rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-45" />
+      </div>
+
       {/* Sidebar Desktop */}
-      <aside className="hidden md:flex flex-col w-64 bg-slate-900/95 border-r border-white/10 h-screen sticky top-0 print:hidden">
-        <div className="p-6">
-          <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center text-white mb-2 shadow-sm shadow-blue-500/20">
-            <span className="font-bold text-xl tracking-tighter">ST</span>
-          </div>
-          <h1 className="text-xl font-bold tracking-tight text-white">SlotTrack Pro</h1>
-          <p className="text-xs text-slate-400 font-medium tracking-wide">CONTROL DE INGRESOS</p>
-        </div>
-        <nav className="flex-1 px-4 space-y-1 mt-4">
-          {tabs.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setActiveTab(t.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 transition-all font-medium text-sm ${
-                activeTab === t.id 
-                  ? 'bg-blue-500/10 text-white border-r-4 border-blue-500' 
-                  : 'text-slate-400 hover:bg-white/5 hover:text-white rounded-xl'
-              }`}
+      <aside className="hidden md:flex flex-col w-64 bg-slate-950/40 backdrop-blur-2xl border-r border-white/5 h-screen sticky top-0 print:hidden z-10">
+        <div className="p-6 border-b border-white/5 bg-slate-900/10 mb-2">
+          <div className="flex items-center gap-3">
+            <motion.div 
+              whileHover={{ scale: 1.1, rotate: 8 }}
+              className="w-11 h-11 bg-gradient-to-tr from-blue-600 via-indigo-500 to-purple-500 rounded-xl flex items-center justify-center text-white shadow-[0_4px_15px_rgba(59,130,246,0.4)] border-t border-white/20 relative cursor-pointer"
             >
-              <span className={activeTab === t.id ? 'text-blue-500' : 'text-slate-500'}>{t.icon}</span>
-              {t.label}
-            </button>
-          ))}
+              {/* Internal shiny reflection overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-transparent to-white/10 rounded-xl" />
+              <div className="absolute -inset-[1px] bg-gradient-to-tr from-indigo-500 to-purple-400 rounded-xl blur-sm opacity-30 -z-10" />
+              <Sparkles size={18} className="text-amber-200" />
+            </motion.div>
+            <div>
+              <h1 className="text-lg font-black tracking-tight text-white flex items-center gap-1.5 leading-none">
+                SlotTrack Pro
+              </h1>
+              <p className="text-[10px] text-teal-400 font-extrabold tracking-widest uppercase mt-0.5">AUDITORÍA SLOTS</p>
+            </div>
+          </div>
+        </div>
+
+        <nav className="flex-1 px-3 space-y-1 mt-4 relative">
+          {tabs.map(t => {
+            const isActive = activeTab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setActiveTab(t.id)}
+                className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all font-medium text-sm relative group cursor-pointer ${
+                  isActive ? 'text-white' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                }`}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="activeMenu"
+                    className="absolute inset-0 bg-gradient-to-r from-blue-600/15 to-indigo-500/5 border border-blue-500/30 rounded-xl shadow-[0_4px_15px_-3px_rgba(59,130,246,0.15)]"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
+                <span className={`transition-colors duration-200 z-10 ${isActive ? 'text-blue-400 drop-shadow-[0_0_8px_rgba(59,130,246,0.4)]' : 'text-slate-500 group-hover:text-slate-300'}`}>
+                  {t.icon}
+                </span>
+                <span className="z-10 tracking-wide font-medium">{t.label}</span>
+              </button>
+            );
+          })}
         </nav>
+
+        {/* Pro version footer indicator */}
+        <div className="p-4 m-3 bg-gradient-to-br from-indigo-950/40 to-slate-900/80 border border-indigo-500/10 rounded-2xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/10 rounded-full blur-xl"></div>
+          <p className="text-xs font-bold text-indigo-400 mb-1 flex items-center gap-1">⚡ Modo Operador</p>
+          <p className="text-[10px] text-slate-400 font-light leading-normal">Supervisión en tiempo real con diagnóstico IA activo.</p>
+        </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 max-w-7xl mx-auto w-full p-4 md:p-8 pb-24 md:pb-8">
-        {activeTab === 'dashboard' && <Dashboard />}
-        {activeTab === 'new' && <NewRecord />}
-        {activeTab === 'history' && <History />}
-        {activeTab === 'locations' && <Locations />}
-        {activeTab === 'settings' && <SettingsView />}
+      {/* Main Content with dynamic animation */}
+      <main className="flex-1 max-w-7xl mx-auto w-full p-4 md:p-8 pb-32 md:pb-8 relative z-10">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.22, ease: "easeInOut" }}
+          >
+            {activeTab === 'dashboard' && <Dashboard />}
+            {activeTab === 'new' && <NewRecord />}
+            {activeTab === 'history' && <History />}
+            {activeTab === 'locations' && <Locations />}
+            {activeTab === 'settings' && <SettingsView />}
+          </motion.div>
+        </AnimatePresence>
       </main>
 
       {/* Bottom Nav Mobile */}
-      <nav className="md:hidden fixed bottom-0 w-full bg-slate-900/90 backdrop-blur-md border-t border-white/10 flex justify-around p-2 pb-safe z-40 print:hidden safe-area-bottom">
-        {tabs.map(t => (
-          <button
-            key={t.id}
-            onClick={() => setActiveTab(t.id)}
-            className={`flex flex-col items-center p-2 rounded-xl min-w-[64px] transition-colors ${
-              activeTab === t.id ? 'text-blue-400 bg-blue-500/10' : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <span className="mb-1">{t.icon}</span>
-            <span className="text-[10px] font-medium">{t.label}</span>
-          </button>
-        ))}
+      <nav className="md:hidden fixed bottom-0 w-full bg-slate-950/80 backdrop-blur-xl border-t border-white/5 flex justify-around p-2 pb-safe z-40 print:hidden safe-area-bottom shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
+        {tabs.map(t => {
+          const isActive = activeTab === t.id;
+          return (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id)}
+              className={`flex flex-col items-center p-2 rounded-xl min-w-[64px] transition-all relative cursor-pointer ${
+                isActive ? 'text-blue-400' : 'text-slate-400'
+              }`}
+            >
+              {isActive && (
+                <motion.div
+                  layoutId="activeMenuMobile"
+                  className="absolute inset-0 bg-blue-500/10 rounded-xl"
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                />
+              )}
+              <span className={`mb-1 z-10 transition-transform ${isActive ? 'scale-110 text-blue-400' : ''}`}>{t.icon}</span>
+              <span className="text-[10px] font-semibold z-10 tracking-tight">{t.label}</span>
+            </button>
+          );
+        })}
       </nav>
     </div>
   );

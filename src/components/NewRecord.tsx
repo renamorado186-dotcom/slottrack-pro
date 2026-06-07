@@ -2,15 +2,18 @@ import React, { useState } from 'react';
 import { useStore } from '../store';
 import { generateId } from '../utils';
 import { ReceiptModal } from './ReceiptModal';
-import { Save, Calculator, Eraser, Banknote, ChevronDown, ChevronUp } from 'lucide-react';
+import { Save, Calculator, Eraser, Banknote, ChevronDown, ChevronUp, Sparkles, RefreshCw } from 'lucide-react';
 import { RecordEntry } from '../types';
 
 export function NewRecord() {
   const { data, addRecord } = useStore();
   const [locationId, setLocationId] = useState('');
+  const [machineId, setMachineId] = useState('');
   const [coinCount, setCoinCount] = useState('');
   const [coinValue, setCoinValue] = useState('5'); // Default 5 per coin
   const [notes, setNotes] = useState('');
+  const [isGeneratingNotes, setIsGeneratingNotes] = useState(false);
+  const [notesError, setNotesError] = useState<string | null>(null);
   
   // Format current date for datetime-local input
   const localIsoString = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
@@ -40,11 +43,56 @@ export function NewRecord() {
   const ownerShare = total * 0.65;
   const managerShare = total * 0.35;
 
+  // Filter machines based on selected location
+  const filteredMachines = data.machines.filter(m => m.locationId === locationId);
+
+  const handleSuggestNotes = async () => {
+    if (!locationId) {
+      setNotesError('Por favor seleccione un puesto primero para dar contexto a la IA.');
+      return;
+    }
+    setIsGeneratingNotes(true);
+    setNotesError(null);
+    try {
+      const selectedLocObj = data.locations.find(l => l.id === locationId);
+      const selectedMacObj = data.machines.find(m => m.id === machineId);
+
+      const response = await fetch('/api/ai/suggest-notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          locationName: selectedLocObj?.name || 'Desconocido',
+          machineName: selectedMacObj?.name || '',
+          coinCount: numCoins,
+          coinValue: valCoin,
+          total,
+          currentNotes: notes
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Lo sentimos, falló la conexión con la IA.');
+      }
+
+      const resData = await response.json();
+      if (resData.error) {
+        throw new Error(resData.error);
+      }
+
+      setNotes(resData.suggestedNote || '');
+    } catch (err: any) {
+      setNotesError(err.message || 'Error al conectar.');
+    } finally {
+      setIsGeneratingNotes(false);
+    }
+  };
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (!locationId || numCoins <= 0 || valCoin <= 0) return;
 
     const locName = data.locations.find(l => l.id === locationId)?.name || 'Desconocido';
+    const macName = data.machines.find(m => m.id === machineId)?.name;
     const timestamp = customDate ? new Date(customDate).getTime() : Date.now();
     const date = new Date(timestamp);
     const dateStr = date.toISOString().split('T')[0];
@@ -55,6 +103,8 @@ export function NewRecord() {
       dateStr,
       locationId,
       locationName: locName,
+      machineId: machineId || undefined,
+      machineName: macName || undefined,
       coinCount: numCoins,
       coinValue: valCoin,
       total,
@@ -67,6 +117,8 @@ export function NewRecord() {
     setSavedRecord(record);
     
     // Reset form
+    setLocationId('');
+    setMachineId('');
     setCoinCount('');
     setNotes('');
     setCustomDate(new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16));
@@ -76,6 +128,7 @@ export function NewRecord() {
 
   const handleClear = () => {
     setLocationId('');
+    setMachineId('');
     setCoinCount('');
     setCoinValue('5');
     setNotes('');
@@ -120,13 +173,37 @@ export function NewRecord() {
             <label className="text-sm font-medium text-slate-300">Puesto</label>
             <select 
               value={locationId} 
-              onChange={e => setLocationId(e.target.value)}
+              onChange={e => {
+                setLocationId(e.target.value);
+                setMachineId(''); // reset machine selection
+              }}
               className="w-full p-3 rounded-xl border border-white/10 bg-slate-900 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none focus:bg-slate-800 appearance-none"
               required
             >
               <option value="">Seleccione Puesto</option>
               {data.locations.map(loc => (
                 <option key={loc.id} value={loc.id}>{loc.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-300">Máquina (Opcional)</label>
+            <select 
+              value={machineId}
+              onChange={e => setMachineId(e.target.value)}
+              disabled={!locationId || filteredMachines.length === 0}
+              className="w-full p-3 rounded-xl border border-white/10 bg-slate-900 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none focus:bg-slate-800 appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <option value="">
+                {!locationId 
+                  ? 'Seleccione puesto primero' 
+                  : filteredMachines.length === 0 
+                  ? 'Sin máquinas registradas' 
+                  : 'Seleccione Máquina (Todas)'}
+              </option>
+              {filteredMachines.map(mac => (
+                <option key={mac.id} value={mac.id}>{mac.name}</option>
               ))}
             </select>
           </div>
@@ -144,7 +221,7 @@ export function NewRecord() {
             />
           </div>
 
-          <div className="space-y-2 md:col-span-2">
+          <div className="space-y-2">
             <label className="text-sm font-medium text-slate-300">Valor de la Moneda (Lempiras)</label>
             <input 
               type="number"
@@ -225,21 +302,37 @@ export function NewRecord() {
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-300">Observaciones (Opcional)</label>
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium text-slate-300">Observaciones (Opcional)</label>
+            <button
+              type="button"
+              onClick={handleSuggestNotes}
+              disabled={isGeneratingNotes || !locationId}
+              className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            >
+              {isGeneratingNotes ? (
+                <RefreshCw size={12} className="animate-spin" />
+              ) : (
+                <Sparkles size={12} className="text-amber-300 animate-pulse" />
+              )}
+              {isGeneratingNotes ? 'Escribiendo...' : 'Redactar con IA'}
+            </button>
+          </div>
           <textarea 
             value={notes}
             onChange={e => setNotes(e.target.value)}
-            className="w-full p-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none focus:bg-white/10 transition-colors"
-            rows={2}
-            placeholder="Algún detalle especial sobre el conteo..."
+            className="w-full p-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none focus:bg-white/10 transition-colors text-sm"
+            rows={2.5}
+            placeholder="Escribe algo corto o presiona el botón de IA para redactar una auditoría automática formal."
           />
+          {notesError && <p className="text-xs text-rose-400 font-light">{notesError}</p>}
         </div>
 
         <div className="flex gap-4">
           <button 
             type="button"
             onClick={handleClear}
-            className="w-1/3 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 font-medium py-4 rounded-xl shadow-lg transition-colors flex justify-center items-center gap-2"
+            className="w-1/3 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 font-medium py-4 rounded-xl shadow-lg transition-colors flex justify-center items-center gap-2 cursor-pointer"
           >
             <Eraser size={20} />
             Limpiar
@@ -248,7 +341,7 @@ export function NewRecord() {
           <button 
             type="submit"
             disabled={!locationId || numCoins <= 0 || valCoin <= 0}
-            className="w-2/3 bg-blue-600 hover:bg-blue-500 border border-transparent disabled:border-white/10 disabled:bg-white/5 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-medium py-4 rounded-xl shadow-lg shadow-blue-500/20 transition-colors flex justify-center items-center gap-2 text-lg"
+            className="w-2/3 bg-blue-600 hover:bg-blue-500 border border-transparent disabled:border-white/10 disabled:bg-white/5 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-medium py-4 rounded-xl shadow-lg shadow-blue-500/20 transition-colors flex justify-center items-center gap-2 text-lg cursor-pointer"
           >
             <Save size={20} />
             Guardar

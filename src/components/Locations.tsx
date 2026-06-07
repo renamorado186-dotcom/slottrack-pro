@@ -1,7 +1,16 @@
 import React, { useState } from 'react';
 import { useStore } from '../store';
 import { generateId } from '../utils';
-import { MapPin, Plus, Edit2, Trash2, MonitorSmartphone, AlertTriangle, Calendar } from 'lucide-react';
+import { MapPin, Plus, Edit2, Trash2, MonitorSmartphone, AlertTriangle, Calendar, Sparkles, Wrench, ShieldAlert, ListChecks, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { PinballRevolucionGuide } from './PinballRevolucionGuide';
+import { motion } from 'motion/react';
+
+interface DiagnosticResult {
+  diagnosis: string;
+  troubleshootingSteps: string[];
+  preventativeActions: string[];
+  safetyWarning: string;
+}
 
 export function Locations() {
   const { data, addLocation, updateLocation, deleteLocation, addMachine, updateMachine, deleteMachine } = useStore();
@@ -17,6 +26,59 @@ export function Locations() {
   const [editMacName, setEditMacName] = useState('');
   const [editMacLocId, setEditMacLocId] = useState('');
   const [editMacDate, setEditMacDate] = useState('');
+
+  // AI Diagnostic States
+  const [diagMachineId, setDiagMachineId] = useState('');
+  const [symptomText, setSymptomText] = useState('');
+  const [isLoadingDiag, setIsLoadingDiag] = useState(false);
+  const [diagResult, setDiagResult] = useState<DiagnosticResult | null>(null);
+  const [diagError, setDiagError] = useState<string | null>(null);
+  const [completedSteps, setCompletedSteps] = useState<Record<number, boolean>>({});
+
+  const handleDiagnostic = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!symptomText.trim()) return;
+
+    setIsLoadingDiag(true);
+    setDiagError(null);
+    setDiagResult(null);
+    setCompletedSteps({});
+
+    try {
+      const selectedMac = data.machines.find(m => m.id === diagMachineId);
+      const response = await fetch('/api/ai/diagnostic', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          machineName: selectedMac?.name || 'Tragamonedas Genérica',
+          lastMaintenanceDate: selectedMac?.lastMaintenanceDate || 'Sin registro',
+          symptom: symptomText.trim()
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('No se pudo conectar con el motor de diagnóstico de IA.');
+      }
+
+      const resData = await response.json();
+      if (resData.error) {
+        throw new Error(resData.error);
+      }
+
+      setDiagResult(resData);
+    } catch (err: any) {
+      setDiagError(err.message || 'Ocurrió un error inesperado al procesar el diagnóstico.');
+    } finally {
+      setIsLoadingDiag(false);
+    }
+  };
+
+  const toggleStep = (idx: number) => {
+    setCompletedSteps(prev => ({
+      ...prev,
+      [idx]: !prev[idx]
+    }));
+  };
 
   const handleAddLocation = (e: React.FormEvent) => {
     e.preventDefault();
@@ -202,12 +264,12 @@ export function Locations() {
                   placeholder="Nueva máquina..."
                   value={newMacName}
                   onChange={e => setNewMacName(e.target.value)}
-                  className="flex-1 p-3 bg-white/5 border border-white/10 text-white placeholder:text-slate-500 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none focus:bg-slate-800 transition-colors"
+                  className="flex-1 p-3 bg-white/5 border border-white/10 text-white placeholder:text-slate-500 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none focus:bg-slate-800 transition-colors text-sm"
                 />
                 <select
                   value={newMacLocId}
                   onChange={e => setNewMacLocId(e.target.value)}
-                  className="w-1/3 p-3 bg-white/5 border border-white/10 text-white rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none focus:bg-slate-800 transition-colors"
+                  className="w-1/3 p-3 bg-white/5 border border-white/10 text-white rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none focus:bg-slate-800 transition-colors text-sm"
                   required
                 >
                   <option value="" disabled>Puesto...</option>
@@ -216,12 +278,12 @@ export function Locations() {
               </div>
               <div className="flex gap-2 items-center">
                  <div className="flex-1 flex items-center bg-white/5 border border-white/10 rounded-xl px-3 overflow-hidden">
-                   <label className="text-sm text-slate-400 whitespace-nowrap mr-2">Mantenimiento:</label>
+                   <label className="text-xs text-slate-400 whitespace-nowrap mr-2">Mantenimiento:</label>
                    <input 
                     type="date"
                     value={newMacDate}
                     onChange={e => setNewMacDate(e.target.value)}
-                    className="flex-1 py-3 bg-transparent text-white focus:outline-none text-sm"
+                    className="flex-1 py-3 bg-transparent text-white focus:outline-none text-xs"
                   />
                  </div>
                 <button disabled={!newMacName.trim() || !newMacLocId} type="submit" className="bg-indigo-600 hover:bg-indigo-500 transition-colors text-white px-4 py-3 rounded-xl disabled:opacity-50 disabled:bg-white/5 disabled:border disabled:border-white/10 disabled:text-slate-500 cursor-pointer">
@@ -233,6 +295,146 @@ export function Locations() {
         </section>
 
       </div>
+
+      {/* === CENTRO DE DIAGNÓSTICO IA === */}
+      <section className="bg-slate-800/70 backdrop-blur-md rounded-3xl p-6 shadow-lg border border-white/10 space-y-6">
+        <div className="flex items-center gap-3 border-b border-indigo-500/10 pb-4">
+          <div className="p-2 bg-gradient-to-tr from-indigo-500 to-purple-500 text-white rounded-xl shadow-md"><Wrench size={20} /></div>
+          <div>
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              Centro de Diagnóstico Técnico con IA 
+              <span className="text-[10px] uppercase font-bold text-indigo-300 tracking-wider bg-indigo-500/10 border border-indigo-400/20 px-2 py-0.5 rounded-full">Gemini</span>
+            </h2>
+            <p className="text-xs text-slate-400">¿Fallas de tolvas, lectores o software? Describe los síntomas y deja que la IA genere un plan de calibración paso a paso.</p>
+          </div>
+        </div>
+
+        <form onSubmit={handleDiagnostic} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+          <div className="space-y-1.5 md:col-span-1">
+            <label className="text-xs font-semibold text-slate-300">Seleccionar Máquina</label>
+            <select
+              value={diagMachineId}
+              onChange={e => setDiagMachineId(e.target.value)}
+              className="w-full p-3 text-sm bg-white/5 border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-blue-500 focus:outline-none focus:bg-slate-800 transition-colors"
+            >
+              <option value="">Tragamonedas Genérica (Sin historial)</option>
+              {data.machines.map(m => (
+                <option key={m.id} value={m.id}>{m.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1.5 md:col-span-2 flex flex-col sm:flex-row gap-3">
+            <div className="flex-1 space-y-1.5">
+              <label className="text-xs font-semibold text-slate-300">Describe el Síntoma</label>
+              <input
+                type="text"
+                placeholder="Ej. El validador se atasca, la pantalla parpadea o no lee monedas de 5..."
+                value={symptomText}
+                onChange={e => setSymptomText(e.target.value)}
+                className="w-full p-3 text-sm bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 focus:outline-none focus:bg-slate-800 transition-colors"
+                required
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={isLoadingDiag || !symptomText.trim()}
+              className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold rounded-xl text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer h-11 self-end min-w-[150px]"
+            >
+              {isLoadingDiag ? (
+                <RefreshCw size={16} className="animate-spin" />
+              ) : (
+                <Sparkles size={16} className="text-amber-300" />
+              )}
+              {isLoadingDiag ? 'Analizando...' : 'Diagnosticar'}
+            </button>
+          </div>
+        </form>
+
+        {diagError && (
+          <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-start gap-2 text-rose-400 text-xs">
+            <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+            <p>{diagError}</p>
+          </div>
+        )}
+
+        {diagResult && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-4 border-t border-white/10 animate-fade-in">
+            
+            {/* Diagnosis & Warning Column */}
+            <div className="lg:col-span-1 space-y-4">
+              <div className="bg-slate-900 border border-indigo-500/20 p-5 rounded-2xl">
+                <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest flex items-center gap-1.5 mb-2">
+                  <MonitorSmartphone size={14} /> Diagnóstico Presuntivo
+                </span>
+                <p className="text-sm font-semibold text-white mb-2">{diagResult.diagnosis}</p>
+              </div>
+
+              {diagResult.safetyWarning && (
+                <div className="bg-rose-500/5 border border-rose-500/20 p-5 rounded-2xl">
+                  <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest flex items-center gap-1.5 mb-2">
+                    <ShieldAlert size={14} /> Protocolo de Seguridad Eléctrica
+                  </span>
+                  <p className="text-xs text-rose-300/90 leading-relaxed font-light">{diagResult.safetyWarning}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Checklist Column */}
+            <div className="lg:col-span-2 space-y-4">
+              <div className="bg-slate-900 border border-white/10 p-5 rounded-2xl">
+                <h4 className="text-xs font-bold text-teal-400 uppercase tracking-widest flex items-center gap-1.5 mb-4">
+                  <ListChecks size={16} /> Workflow de Inspección Guía (Checklist Interactivo)
+                </h4>
+                
+                <ul className="space-y-3">
+                  {diagResult.troubleshootingSteps.map((step, idx) => (
+                    <li 
+                      key={idx} 
+                      onClick={() => toggleStep(idx)}
+                      className={`p-3 rounded-xl border text-xs cursor-pointer flex items-start gap-3 transition-colors ${
+                        completedSteps[idx] 
+                          ? 'bg-emerald-500/5 border-emerald-500/30 text-emerald-400' 
+                          : 'bg-white/5 border-white/5 text-slate-300 hover:bg-white/10'
+                      }`}
+                    >
+                      <button className="shrink-0 mt-0.5">
+                        {completedSteps[idx] ? (
+                          <CheckCircle2 size={16} className="text-emerald-500" />
+                        ) : (
+                          <div className="w-4 h-4 rounded border border-slate-500"></div>
+                        )}
+                      </button>
+                      <span className={completedSteps[idx] ? 'line-through opacity-80' : ''}>{step}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {diagResult.preventativeActions.length > 0 && (
+                <div className="p-4 bg-teal-500/5 rounded-2xl border border-teal-500/10">
+                  <h5 className="text-xs font-bold text-teal-300 mb-2">Para Evitar que Vuelva a Pasar:</h5>
+                  <ul className="list-disc pl-4 space-y-1 text-xs text-slate-300 font-light">
+                    {diagResult.preventativeActions.map((act, i) => <li key={i}>{act}</li>)}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+          </div>
+        )}
+      </section>
+
+      {/* === GUÍA TÉCNICA REVOLUCIÓN PREMIUM === */}
+      <motion.section 
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1, duration: 0.5 }}
+        className="space-y-4"
+      >
+        <PinballRevolucionGuide />
+      </motion.section>
+
     </div>
   );
 }
