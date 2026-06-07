@@ -1,0 +1,8 @@
+{
+  "name": "Remix: SlotTrack Pro",
+  "description": "Sistema de gestión e ingresos para máquinas tragamonedas.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
