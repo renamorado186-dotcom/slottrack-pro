@@ -29,58 +29,10 @@ function AppContent() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col md:flex-row font-sans print:bg-white text-slate-100 relative overflow-x-hidden">
+    <div className="min-h-screen bg-slate-950 flex flex-col md:flex-row font-sans print:bg-white text-slate-100">
       
-      {/* PERSISTENT 3D VIVID BACKGROUND LAYER */}
-      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden select-none">
-        {/* Fullscreen high contrast 3D slot gaming environment image */}
-        <motion.img 
-          src="/src/assets/images/slots_hero_1780857874331.png" 
-          alt="3D Theme Background" 
-          referrerPolicy="no-referrer"
-          initial={{ scale: 1.15, opacity: 0 }}
-          animate={{ 
-            scale: [1.12, 1.15, 1.12],
-            opacity: 0.18,
-          }}
-          transition={{ 
-            scale: { duration: 25, repeat: Infinity, ease: "easeInOut" },
-            opacity: { duration: 1.5 }
-          }}
-          className="w-full h-full object-cover object-center filter saturate-150 contrast-125 brightness-75 scale-110"
-        />
-        {/* Liquid neon light orbs breathing behind components to make it feel extremely alive */}
-        <motion.div 
-          animate={{ 
-            x: [0, 45, -20, 0], 
-            y: [0, -35, 50, 0],
-            scale: [1, 1.25, 0.9, 1] 
-          }}
-          transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-1/4 left-1/4 w-[35rem] h-[35rem] bg-indigo-500/8 rounded-full blur-[130px]"
-        />
-        <motion.div 
-          animate={{ 
-            x: [0, -50, 30, 0], 
-            y: [0, 40, -45, 0],
-            scale: [1, 0.9, 1.2, 1] 
-          }}
-          transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute bottom-1/4 right-1/4 w-[40rem] h-[40rem] bg-cyan-500/8 rounded-full blur-[140px]"
-        />
-        <motion.div 
-          animate={{ 
-            opacity: [0.3, 0.6, 0.3]
-          }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute inset-0 bg-radial-[circle_at_center,transparent_40%,#020617_90%] mix-blend-multiply"
-        />
-        {/* Sleek digital grids overlaid */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-[size:3rem_3rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-45" />
-      </div>
-
       {/* Sidebar Desktop */}
-      <aside className="hidden md:flex flex-col w-64 bg-slate-950/40 backdrop-blur-2xl border-r border-white/5 h-screen sticky top-0 print:hidden z-10">
+      <aside className="hidden md:flex flex-col w-64 bg-slate-900/40 backdrop-blur-xl border-r border-white/5 h-screen sticky top-0 print:hidden z-10">
         <div className="p-6 border-b border-white/5 bg-slate-900/10 mb-2">
           <div className="flex items-center gap-3">
             <motion.div 
@@ -137,7 +89,7 @@ function AppContent() {
       </aside>
 
       {/* Main Content with dynamic animation */}
-      <main className="flex-1 max-w-7xl mx-auto w-full p-4 md:p-8 pb-32 md:pb-8 relative z-10">
+      <main className="flex-1 max-w-7xl mx-auto w-full p-4 md:p-8 pb-32 md:pb-8">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
